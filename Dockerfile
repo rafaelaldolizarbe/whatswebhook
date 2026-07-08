@@ -16,7 +16,10 @@ WORKDIR /app
 
 RUN useradd --create-home --shell /usr/sbin/nologin whatsapp
 COPY --from=build /app/publish .
-RUN chown -R whatsapp:whatsapp /app
+# /data é onde o volume nomeado do docker-compose (app-data) é montado — precisa
+# existir com o dono certo ANTES do mount, senão o Docker inicializa o volume
+# como root e o SQLite (rodando como usuário whatsapp) não consegue escrever nele.
+RUN mkdir -p /data && chown -R whatsapp:whatsapp /app /data
 USER whatsapp
 
 ENV ASPNETCORE_URLS=http://0.0.0.0:5000
