@@ -6,3 +6,10 @@ obj/
 data/
 appsettings.*.local.json
 .env
+
+# Terraform (note: .terraform.lock.hcl NÃO é ignorado — deve ser versionado)
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate
+deploy/terraform/*.tfstate.*
+deploy/terraform/terraform.tfvars
+deploy/terraform/crash.log

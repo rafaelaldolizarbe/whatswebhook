@@ -1,0 +1,9 @@
+# Copie para terraform.tfvars (ignorado pelo Git) e preencha.
+
+region         = "sa-saopaulo-1"
+compartment_id = "ocid1.tenancy.oc1..SEU_TENANCY_OCID_AQUI" # tenancy raiz, sem sub-compartments (ver ~/.oci/config)
+
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# Restrinja ao seu IP público em produção (ex.: "203.0.113.42/32") em vez de 0.0.0.0/0.
+ssh_allowed_cidr = "0.0.0.0/0"
