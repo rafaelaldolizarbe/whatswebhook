@@ -1,8 +1,11 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using WhatsAppWebhook.Data;
 using WhatsAppWebhook.Data.Entities;
+using WhatsAppWebhook.Dtos;
+using WhatsAppWebhook.Hubs;
 using WhatsAppWebhook.Models;
 
 namespace WhatsAppWebhook.Services;
@@ -10,6 +13,7 @@ namespace WhatsAppWebhook.Services;
 public class MessageProcessor(
     ChannelReader<string> reader,
     IServiceScopeFactory scopeFactory,
+    IHubContext<ConversationHub> hub,
     ILogger<MessageProcessor> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -129,7 +133,7 @@ public class MessageProcessor(
             ? message.Text?.Body
             : JsonSerializer.Serialize(message);
 
-        db.Messages.Add(new Message
+        var newMessage = new Message
         {
             WamId = message.Id,
             ContactId = contact.Id,
@@ -138,7 +142,8 @@ public class MessageProcessor(
             Body = body,
             Timestamp = ParseTimestamp(message.Timestamp),
             RawPayload = JsonSerializer.Serialize(message)
-        });
+        };
+        db.Messages.Add(newMessage);
 
         try
         {
@@ -149,6 +154,14 @@ public class MessageProcessor(
             // Corrida entre dois eventos duplicados chegando quase ao mesmo tempo:
             // o índice único em WamId barra a segunda gravação.
             logger.LogInformation(ex, "Conflito de idempotência ao salvar {WamId}, ignorando", message.Id);
+            return;
+        }
+
+        await BroadcastMessageAsync(contact.Id, newMessage, ct);
+
+        if (contact.HumanTakeoverEnabled)
+        {
+            logger.LogInformation("Contato {WaId} está em atendimento humano, bot não responde", contact.WaId);
             return;
         }
 
@@ -171,6 +184,15 @@ public class MessageProcessor(
 
         message.Status = status.Status;
         await db.SaveChangesAsync(ct);
+
+        await hub.Clients.Group(ConversationHub.GroupName(message.ContactId))
+            .SendAsync("messageStatusUpdated", new { messageId = message.Id, status = message.Status }, ct);
+    }
+
+    private Task BroadcastMessageAsync(int contactId, Message message, CancellationToken ct)
+    {
+        var summary = new MessageSummary(message.Id, message.Direction, message.Type, message.Body, message.Status, message.Timestamp);
+        return hub.Clients.Group(ConversationHub.GroupName(contactId)).SendAsync("messageReceived", summary, ct);
     }
 
     private static DateTimeOffset ParseTimestamp(string? unixSeconds)

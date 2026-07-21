@@ -1,12 +1,14 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using WhatsAppWebhook.Data;
 using WhatsAppWebhook.Data.Entities;
+using WhatsAppWebhook.Hubs;
 using WhatsAppWebhook.Services;
 using Xunit;
 
@@ -27,6 +29,40 @@ public class FakeHttpMessageHandler(HttpStatusCode statusCode, string responseBo
             Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
         };
     }
+}
+
+// WhatsAppSender manda um broadcast via SignalR a cada envio bem-sucedido —
+// esses testes não verificam o hub, só precisam de uma implementação que não derrube nada.
+public class NoOpClientProxy : IClientProxy
+{
+    public Task SendCoreAsync(string method, object?[] args, CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+public class NoOpHubClients : IHubClients
+{
+    private readonly NoOpClientProxy _proxy = new();
+    public IClientProxy All => _proxy;
+    public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds) => _proxy;
+    public IClientProxy Client(string connectionId) => _proxy;
+    public IClientProxy Clients(IReadOnlyList<string> connectionIds) => _proxy;
+    public IClientProxy Group(string groupName) => _proxy;
+    public IClientProxy GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds) => _proxy;
+    public IClientProxy Groups(IReadOnlyList<string> groupNames) => _proxy;
+    public IClientProxy OthersInGroup(string groupName) => _proxy;
+    public IClientProxy User(string userId) => _proxy;
+    public IClientProxy Users(IReadOnlyList<string> userIds) => _proxy;
+}
+
+public class NoOpGroupManager : IGroupManager
+{
+    public Task AddToGroupAsync(string connectionId, string groupName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task RemoveFromGroupAsync(string connectionId, string groupName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+public class NoOpHubContext : IHubContext<ConversationHub>
+{
+    public IHubClients Clients { get; } = new NoOpHubClients();
+    public IGroupManager Groups { get; } = new NoOpGroupManager();
 }
 
 public class WhatsAppSenderTests : IDisposable
@@ -63,7 +99,7 @@ public class WhatsAppSenderTests : IDisposable
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, """{"messages":[{"id":"wamid.OUT123"}]}""");
         var httpClient = new HttpClient(handler);
-        var sender = new WhatsAppSender(httpClient, _db, BuildConfiguration(), NullLogger<WhatsAppSender>.Instance);
+        var sender = new WhatsAppSender(httpClient, _db, BuildConfiguration(), new NoOpHubContext(), NullLogger<WhatsAppSender>.Instance);
 
         await sender.SendTextAsync(_contact, "Olá!");
 
@@ -86,7 +122,7 @@ public class WhatsAppSenderTests : IDisposable
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.Unauthorized, """{"error":"token inválido"}""");
         var httpClient = new HttpClient(handler);
-        var sender = new WhatsAppSender(httpClient, _db, BuildConfiguration(), NullLogger<WhatsAppSender>.Instance);
+        var sender = new WhatsAppSender(httpClient, _db, BuildConfiguration(), new NoOpHubContext(), NullLogger<WhatsAppSender>.Instance);
 
         await sender.SendTextAsync(_contact, "Olá!");
 
@@ -98,7 +134,7 @@ public class WhatsAppSenderTests : IDisposable
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, """{"messages":[{"id":"wamid.OUT456"}]}""");
         var httpClient = new HttpClient(handler);
-        var sender = new WhatsAppSender(httpClient, _db, BuildConfiguration(), NullLogger<WhatsAppSender>.Instance);
+        var sender = new WhatsAppSender(httpClient, _db, BuildConfiguration(), new NoOpHubContext(), NullLogger<WhatsAppSender>.Instance);
 
         await sender.SendButtonsAsync(_contact, "Como posso ajudar?", [("btn_a", "Opção A"), ("btn_b", "Opção B")]);
 

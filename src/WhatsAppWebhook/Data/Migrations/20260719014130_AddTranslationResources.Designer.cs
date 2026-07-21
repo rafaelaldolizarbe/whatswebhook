@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WhatsAppWebhook.Data;
 
@@ -10,9 +11,11 @@ using WhatsAppWebhook.Data;
 namespace WhatsAppWebhook.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260719014130_AddTranslationResources")]
+    partial class AddTranslationResources
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -246,9 +249,6 @@ namespace WhatsAppWebhook.Data.Migrations
 
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("NeedsHumanAttention")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ProfileName")
                         .HasColumnType("TEXT");

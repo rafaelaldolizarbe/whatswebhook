@@ -22,6 +22,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./admin-dist:/srv/admin:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

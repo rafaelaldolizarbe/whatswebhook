@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WhatsAppWebhook.Data;
 
@@ -10,9 +11,11 @@ using WhatsAppWebhook.Data;
 namespace WhatsAppWebhook.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717172802_AddProjectsSettingsAndTakeover")]
+    partial class AddProjectsSettingsAndTakeover
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -247,9 +250,6 @@ namespace WhatsAppWebhook.Data.Migrations
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("NeedsHumanAttention")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("ProfileName")
                         .HasColumnType("TEXT");
 
@@ -332,38 +332,6 @@ namespace WhatsAppWebhook.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Projects");
-                });
-
-            modelBuilder.Entity("WhatsAppWebhook.Data.Entities.TranslationResource", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ContentJson")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Locale")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Namespace")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Locale", "Namespace")
-                        .IsUnique();
-
-                    b.ToTable("TranslationResources");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

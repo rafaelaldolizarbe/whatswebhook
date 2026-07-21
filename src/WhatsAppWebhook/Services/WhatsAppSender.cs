@@ -1,8 +1,11 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using WhatsAppWebhook.Data;
 using WhatsAppWebhook.Data.Entities;
+using WhatsAppWebhook.Dtos;
+using WhatsAppWebhook.Hubs;
 
 namespace WhatsAppWebhook.Services;
 
@@ -10,7 +13,7 @@ namespace WhatsAppWebhook.Services;
 // livre só podem ser enviadas até 24h após a última mensagem do usuário. Nesta
 // fase o bot é sempre reativo (responde dentro da janela), então templates
 // aprovados para fora da janela não são implementados ainda.
-public class WhatsAppSender(HttpClient httpClient, AppDbContext db, IConfiguration configuration, ILogger<WhatsAppSender> logger) : IWhatsAppSender
+public class WhatsAppSender(HttpClient httpClient, AppDbContext db, IConfiguration configuration, IHubContext<ConversationHub> hub, ILogger<WhatsAppSender> logger) : IWhatsAppSender
 {
     public Task SendTextAsync(Contact contact, string body, CancellationToken ct = default)
         => SendAsync(contact, "text", new { text = new { body } }, body, ct);
@@ -100,7 +103,7 @@ public class WhatsAppSender(HttpClient httpClient, AppDbContext db, IConfigurati
             return;
         }
 
-        db.Messages.Add(new Message
+        var sentMessage = new Message
         {
             WamId = wamId,
             ContactId = contact.Id,
@@ -109,8 +112,12 @@ public class WhatsAppSender(HttpClient httpClient, AppDbContext db, IConfigurati
             Body = bodyToPersist,
             Timestamp = DateTimeOffset.UtcNow,
             RawPayload = JsonSerializer.Serialize(payload)
-        });
+        };
+        db.Messages.Add(sentMessage);
         await db.SaveChangesAsync(ct);
+
+        var summary = new MessageSummary(sentMessage.Id, sentMessage.Direction, sentMessage.Type, sentMessage.Body, sentMessage.Status, sentMessage.Timestamp);
+        await hub.Clients.Group(ConversationHub.GroupName(contact.Id)).SendAsync("messageReceived", summary, ct);
     }
 
     private static Dictionary<string, object?> MergePayload(string to, string type, object typeSpecificContent)

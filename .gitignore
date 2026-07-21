@@ -13,3 +13,6 @@ deploy/terraform/*.tfstate
 deploy/terraform/*.tfstate.*
 deploy/terraform/terraform.tfvars
 deploy/terraform/crash.log
+
+# Build do whatsapp-admin-client, enviado direto pra VM via rsync — não versionado aqui.
+deploy/admin-dist/
